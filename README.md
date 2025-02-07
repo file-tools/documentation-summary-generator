@@ -1,9 +1,11 @@
 ## REAMDE
 
 ## More ideas
-- Backlinks - Could calculate this ... find ones without any
+- AUTHOR REPORTS -- by RK, by Tim, by Jane ... if Authors name stored in frontmatter could do this
 - Word count - added a Wordcount feature but this is best with just a report on PAGES instead of LINKS
-
+- Backlinks - Could calculate this ... find ones without any
+- TAG REPORTS and sorted - Also from frontamtterYou'r
+- JSON Export as well ... 
 
 ## Process ..
 
