@@ -2,19 +2,28 @@
 
 // Configuration parameters
 $rootDirectory = '/Users/Reess/Desktop/ReessDB/repos/Wordpress/';  // Example path, modify as needed
-$orderBy = "domain"; // Can be "default", "creation_newest", "modified_newest", or "domain"
-$reportType = "links_external"; // Can be "links_external" or "links_internal"
+$orderBy = "default"; // Can be "default", "creation_newest", "modified_newest", or "domain"
+$reportType = "pages_alpha"; // Can be "links_external", "links_internal", or "pages_alpha"
 
 // Output file paths (comment out to skip generation)
-$output_csv = __DIR__ . "/exports/{$reportType}.csv";
-$output_md = __DIR__ . "/exports/{$reportType}.md";
+$output_csv = __DIR__ . "/exports/{$reportType}/{$reportType}.csv";
+$output_md = __DIR__ . "/exports/{$reportType}/{$reportType}.md";
 
-// Create directory if it doesn't exist
+// Create directories if they don't exist
 if (!file_exists($rootDirectory)) {
     mkdir($rootDirectory, 0755, true);
     echo "Created directory: $rootDirectory\n";
     echo "Please add your markdown files to this directory and run the script again.\n";
     exit;
+}
+
+// Create export directories if they don't exist
+if (isset($output_csv) || isset($output_md)) {
+    $exportDir = __DIR__ . "/exports/{$reportType}";
+    if (!file_exists($exportDir)) {
+        mkdir($exportDir, 0755, true);
+        echo "Created export directory: $exportDir\n";
+    }
 }
 
 // Function to recursively get all markdown files
@@ -129,27 +138,36 @@ $allLinks = []; // Array to store all links before writing
 
 foreach ($markdownFiles as $file) {
     $content = file_get_contents($file);
-    $links = extractLinks($content, $reportType);
-    
-    // Get file creation and modification times
-    $creationTime = getMacCreationTime($file);
-    $modifiedTime = date('Y-m-d H:i:s', filemtime($file));
     $filename = basename($file);
     $relativePath = getRelativePath($file, $rootDirectory);
+    $creationTime = getMacCreationTime($file);
+    $modifiedTime = date('Y-m-d H:i:s', filemtime($file));
     $wordCount = countWords($content);
     
-    // Store all link information
-    foreach ($links as $link) {
+    if ($reportType === "pages_alpha") {
+        // For pages report, store one entry per file
         $allLinks[] = [
-            'domain' => $reportType === "links_external" ? extractDomain($link['url']) : "",
             'filename' => $filename,
-            'url' => $link['url'],
-            'name' => $link['name'],
             'fullpath' => $relativePath,
             'creation_time' => $creationTime,
             'modified_time' => $modifiedTime,
             'word_count' => $wordCount
         ];
+    } else {
+        // For link reports, process links as before
+        $links = extractLinks($content, $reportType);
+        foreach ($links as $link) {
+            $allLinks[] = [
+                'domain' => $reportType === "links_external" ? extractDomain($link['url']) : "",
+                'filename' => $filename,
+                'url' => $link['url'],
+                'name' => $link['name'],
+                'fullpath' => $relativePath,
+                'creation_time' => $creationTime,
+                'modified_time' => $modifiedTime,
+                'word_count' => $wordCount
+            ];
+        }
     }
 }
 
@@ -177,23 +195,49 @@ if ($orderBy === "creation_newest") {
 
 // Write CSV if output path is defined
 if (isset($output_csv)) {
-    // Initialize CSV file with headers (all lowercase with underscores)
-    $csvHeaders = ['domain', 'file', 'url', 'link_name', 'source_file', 'creation_date', 'modified_date', 'word_count'];
-    $fp = fopen($output_csv, 'w');
-    fputcsv($fp, $csvHeaders);
+    if ($reportType === "pages_alpha") {
+        // Initialize CSV file with headers for pages report
+        $csvHeaders = ['file', 'source_file', 'creation_date', 'modified_date', 'word_count'];
+        $fp = fopen($output_csv, 'w');
+        fputcsv($fp, $csvHeaders);
 
-    // Write sorted links to CSV
-    foreach ($allLinks as $link) {
-        fputcsv($fp, [
-            $link['domain'],
-            $link['filename'],
-            $link['url'],
-            $link['name'],
-            $link['fullpath'],
-            $link['creation_time'],
-            $link['modified_time'],
-            $link['word_count']
-        ]);
+        // Sort files alphabetically
+        usort($allLinks, function($a, $b) {
+            return strcasecmp($a['filename'], $b['filename']);
+        });
+
+        // Write sorted pages to CSV (one entry per file)
+        $processedFiles = [];
+        foreach ($allLinks as $link) {
+            if (!in_array($link['filename'], $processedFiles)) {
+                fputcsv($fp, [
+                    $link['filename'],
+                    $link['fullpath'],
+                    $link['creation_time'],
+                    $link['modified_time'],
+                    $link['word_count']
+                ]);
+                $processedFiles[] = $link['filename'];
+            }
+        }
+    } else {
+        // Existing link report CSV code
+        $csvHeaders = ['domain', 'file', 'url', 'link_name', 'source_file', 'creation_date', 'modified_date', 'word_count'];
+        $fp = fopen($output_csv, 'w');
+        fputcsv($fp, $csvHeaders);
+
+        foreach ($allLinks as $link) {
+            fputcsv($fp, [
+                $link['domain'],
+                $link['filename'],
+                $link['url'],
+                $link['name'],
+                $link['fullpath'],
+                $link['creation_time'],
+                $link['modified_time'],
+                $link['word_count']
+            ]);
+        }
     }
     fclose($fp);
     echo "CSV extraction completed. Results saved to: $output_csv\n";
@@ -201,60 +245,91 @@ if (isset($output_csv)) {
 
 // Write Markdown if output path is defined
 if (isset($output_md)) {
-    $title = $reportType === "links_external" ? "External Links" : "Internal Links";
-    $md_content = "# {$title}\n\n";
-    
-    // Count unique domains and total URLs
-    $totalUrls = count($allLinks);
-    $uniqueDomains = 0;
-    $currentDomain = '';
-    
-    // Count unique domains based on headers
-    foreach ($allLinks as $link) {
-        $header = '';
-        if ($orderBy === 'domain' && !empty($link['domain'])) {
-            $header = $link['domain'];
-        } elseif ($orderBy === 'creation_newest') {
-            $header = date('Y-m-d', strtotime($link['creation_time']));
-        } elseif ($orderBy === 'modified_newest') {
-            $header = date('Y-m-d', strtotime($link['modified_time']));
+    if ($reportType === "pages_alpha") {
+        $md_content = "# Pages\n\n";
+        
+        // Get unique files and sort alphabetically
+        $uniqueFiles = array_unique(array_column($allLinks, 'filename'));
+        sort($uniqueFiles, SORT_STRING | SORT_FLAG_CASE);
+        
+        // Add total count
+        $totalPages = count($uniqueFiles);
+        $md_content .= "{$totalPages} total pages\n\n";
+        
+        // Group by first letter
+        $currentLetter = '';
+        foreach ($uniqueFiles as $filename) {
+            $firstLetter = strtoupper(substr($filename, 0, 1));
+            
+            if ($firstLetter !== $currentLetter) {
+                $md_content .= "\n## {$firstLetter}\n";
+                $currentLetter = $firstLetter;
+            }
+            
+            // Remove .md extension for display
+            $displayName = preg_replace('/\.md$/', '', $filename);
+            $encodedPath = str_replace(' ', '%20', array_search($filename, array_column($allLinks, 'filename', 'fullpath')));
+            $encodedPath = str_replace('⭐', '%E2%AD%90', $encodedPath);
+            
+            $md_content .= "- [{$displayName}]({$encodedPath})\n";
+        }
+    } else {
+        // Existing link report markdown code
+        $title = $reportType === "links_external" ? "External Links" : "Internal Links";
+        $md_content = "# {$title}\n\n";
+        
+        // Count unique domains and total URLs
+        $totalUrls = count($allLinks);
+        $uniqueDomains = 0;
+        $currentDomain = '';
+        
+        // Count unique domains based on headers
+        foreach ($allLinks as $link) {
+            $header = '';
+            if ($orderBy === 'domain' && !empty($link['domain'])) {
+                $header = $link['domain'];
+            } elseif ($orderBy === 'creation_newest') {
+                $header = date('Y-m-d', strtotime($link['creation_time']));
+            } elseif ($orderBy === 'modified_newest') {
+                $header = date('Y-m-d', strtotime($link['modified_time']));
+            }
+            
+            if ($header !== $currentDomain) {
+                $uniqueDomains++;
+                $currentDomain = $header;
+            }
         }
         
-        if ($header !== $currentDomain) {
-            $uniqueDomains++;
-            $currentDomain = $header;
-        }
-    }
-    
-    // Add summary line
-    if ($orderBy === 'domain') {
-        $md_content .= "{$totalUrls} URLs from {$uniqueDomains} domains\n\n";
-    }
-    
-    $current_header = '';
-    foreach ($allLinks as $link) {
-        // Determine header based on orderBy
-        $header = '';
-        if ($orderBy === 'domain' && !empty($link['domain'])) {
-            $header = $link['domain'];
-        } elseif ($orderBy === 'creation_newest') {
-            $header = date('Y-m-d', strtotime($link['creation_time']));
-        } elseif ($orderBy === 'modified_newest') {
-            $header = date('Y-m-d', strtotime($link['modified_time']));
+        // Add summary line
+        if ($orderBy === 'domain') {
+            $md_content .= "{$totalUrls} URLs from {$uniqueDomains} domains\n\n";
         }
         
-        // Add header if it's different from current
-        if ($header && $header !== $current_header) {
-            $md_content .= ($current_header ? "\n" : "") . "## {$header}\n";
-            $current_header = $header;
+        $current_header = '';
+        foreach ($allLinks as $link) {
+            // Determine header based on orderBy
+            $header = '';
+            if ($orderBy === 'domain' && !empty($link['domain'])) {
+                $header = $link['domain'];
+            } elseif ($orderBy === 'creation_newest') {
+                $header = date('Y-m-d', strtotime($link['creation_time']));
+            } elseif ($orderBy === 'modified_newest') {
+                $header = date('Y-m-d', strtotime($link['modified_time']));
+            }
+            
+            // Add header if it's different from current
+            if ($header && $header !== $current_header) {
+                $md_content .= ($current_header ? "\n" : "") . "## {$header}\n";
+                $current_header = $header;
+            }
+            
+            // URL encode the relative path for the markdown link
+            $encodedPath = str_replace(' ', '%20', $link['fullpath']);
+            $encodedPath = str_replace('⭐', '%E2%AD%90', $encodedPath);
+            
+            // Add link to URL and encoded source file with dash bullet
+            $md_content .= "- [{$link['url']}]({$link['url']}) - []({$encodedPath})\n";
         }
-        
-        // URL encode the relative path for the markdown link
-        $encodedPath = str_replace(' ', '%20', $link['fullpath']);
-        $encodedPath = str_replace('⭐', '%E2%AD%90', $encodedPath);
-        
-        // Add link to URL and encoded source file with dash bullet
-        $md_content .= "- [{$link['url']}]({$link['url']}) - [📄]({$encodedPath})\n";
     }
     
     file_put_contents($output_md, $md_content);
