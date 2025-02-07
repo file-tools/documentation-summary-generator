@@ -3,7 +3,7 @@
 // Configuration parameters
 $rootDirectory = '/Users/Reess/Desktop/ReessDB/repos/Wordpress/';  // Example path, modify as needed
 $orderBy = "default"; // Can be "default", "creation_newest", "modified_newest", or "domain"
-$reportType = "pages_alpha"; // Can be "links_external", "links_internal", or "pages_alpha"
+$reportType = "pages_byfolder"; // Can be "links_external", "links_internal", "pages_alpha", or "pages_byfolder"
 
 // Output file paths (comment out to skip generation)
 $output_csv = __DIR__ . "/exports/{$reportType}/{$reportType}.csv";
@@ -103,14 +103,19 @@ function extractDomain($url) {
 
 // Function to get relative path
 function getRelativePath($fullPath, $rootDirectory) {
-    // Ensure paths use consistent directory separators
-    $fullPath = str_replace('\\', '/', $fullPath);
-    $rootDirectory = str_replace('\\', '/', $rootDirectory);
+    // Ensure paths use consistent directory separators and no trailing slash
+    $fullPath = rtrim(str_replace('\\', '/', $fullPath), '/');
+    $rootDirectory = rtrim(str_replace('\\', '/', $rootDirectory), '/');
     
-    // Remove root directory path and leading slash
-    $relativePath = str_replace($rootDirectory . '/', '', $fullPath);
+    // Remove root directory path
+    if (strpos($fullPath, $rootDirectory) === 0) {
+        $relativePath = substr($fullPath, strlen($rootDirectory));
+    } else {
+        $relativePath = $fullPath;
+    }
     
-    return $relativePath;
+    // Remove leading slash if present
+    return ltrim($relativePath, '/');
 }
 
 // Function to count words in markdown content
@@ -144,8 +149,8 @@ foreach ($markdownFiles as $file) {
     $modifiedTime = date('Y-m-d H:i:s', filemtime($file));
     $wordCount = countWords($content);
     
-    if ($reportType === "pages_alpha") {
-        // For pages report, store one entry per file
+    if ($reportType === "pages_alpha" || $reportType === "pages_byfolder") {
+        // For pages reports, store one entry per file
         $allLinks[] = [
             'filename' => $filename,
             'fullpath' => $relativePath,
@@ -195,23 +200,60 @@ if ($orderBy === "creation_newest") {
 
 // Write CSV if output path is defined
 if (isset($output_csv)) {
-    if ($reportType === "pages_alpha") {
+    if ($reportType === "pages_byfolder" || $reportType === "pages_alpha") {
         // Initialize CSV file with headers for pages report
-        $csvHeaders = ['file', 'source_file', 'creation_date', 'modified_date', 'word_count'];
+        $csvHeaders = ['file', 'folder1', 'folder2', 'folder3', 'folder4', 'source_file', 'creation_date', 'modified_date', 'word_count'];
         $fp = fopen($output_csv, 'w');
         fputcsv($fp, $csvHeaders);
 
-        // Sort files alphabetically
-        usort($allLinks, function($a, $b) {
-            return strcasecmp($a['filename'], $b['filename']);
-        });
+        // Sort files
+        if ($reportType === "pages_byfolder") {
+            usort($allLinks, function($a, $b) {
+                // First sort by folder1
+                $folder1Compare = strcasecmp(
+                    explode('/', trim($a['fullpath'], '/'))[0] ?? '', 
+                    explode('/', trim($b['fullpath'], '/'))[0] ?? ''
+                );
+                if ($folder1Compare !== 0) return $folder1Compare;
+                
+                // Then by folder2
+                $folder2Compare = strcasecmp(
+                    explode('/', trim($a['fullpath'], '/'))[1] ?? '', 
+                    explode('/', trim($b['fullpath'], '/'))[1] ?? ''
+                );
+                if ($folder2Compare !== 0) return $folder2Compare;
+                
+                // Then by folder3
+                $folder3Compare = strcasecmp(
+                    explode('/', trim($a['fullpath'], '/'))[2] ?? '', 
+                    explode('/', trim($b['fullpath'], '/'))[2] ?? ''
+                );
+                if ($folder3Compare !== 0) return $folder3Compare;
+                
+                // Finally by filename
+                return strcasecmp($a['filename'], $b['filename']);
+            });
+        } else {
+            // Original alphabetical sort for pages_alpha
+            usort($allLinks, function($a, $b) {
+                return strcasecmp($a['filename'], $b['filename']);
+            });
+        }
 
-        // Write sorted pages to CSV (one entry per file)
+        // Write sorted pages to CSV
         $processedFiles = [];
         foreach ($allLinks as $link) {
             if (!in_array($link['filename'], $processedFiles)) {
+                $pathParts = explode('/', trim($link['fullpath'], '/'));
+                array_pop($pathParts); // Remove the filename
+                $folders = array_pad($pathParts, 4, '');
+                
                 fputcsv($fp, [
                     $link['filename'],
+                    $folders[0],
+                    $folders[1],
+                    $folders[2],
+                    $folders[3],
                     $link['fullpath'],
                     $link['creation_time'],
                     $link['modified_time'],
@@ -245,7 +287,52 @@ if (isset($output_csv)) {
 
 // Write Markdown if output path is defined
 if (isset($output_md)) {
-    if ($reportType === "pages_alpha") {
+    if ($reportType === "pages_byfolder") {
+        $md_content = "# Pages By Folder\n\n";
+        
+        // Get total count
+        $totalPages = count(array_unique(array_column($allLinks, 'filename')));
+        $md_content .= "{$totalPages} total pages\n\n";
+        
+        // Track current folders to know when to add headers
+        $currentFolder1 = '';
+        $currentFolder2 = '';
+        $currentFolder3 = '';
+        
+        foreach ($allLinks as $link) {
+            $pathParts = explode('/', trim($link['fullpath'], '/'));
+            $filename = array_pop($pathParts); // Remove and store filename
+            $folders = array_pad($pathParts, 4, '');
+            
+            // Add folder1 header if changed
+            if ($folders[0] !== '' && $folders[0] !== $currentFolder1) {
+                $md_content .= "\n## {$folders[0]}\n";
+                $currentFolder1 = $folders[0];
+                $currentFolder2 = ''; // Reset subfolder tracking
+                $currentFolder3 = '';
+            }
+            
+            // Add folder2 header if changed
+            if ($folders[1] !== '' && $folders[1] !== $currentFolder2) {
+                $md_content .= "\n### {$folders[1]}\n";
+                $currentFolder2 = $folders[1];
+                $currentFolder3 = ''; // Reset sub-subfolder tracking
+            }
+            
+            // Add folder3 header if changed
+            if ($folders[2] !== '' && $folders[2] !== $currentFolder3) {
+                $md_content .= "\n#### {$folders[2]}\n";
+                $currentFolder3 = $folders[2];
+            }
+            
+            // Remove .md extension for display
+            $displayName = preg_replace('/\.md$/', '', $filename);
+            $encodedPath = str_replace(' ', '%20', $link['fullpath']);
+            $encodedPath = str_replace('⭐', '%E2%AD%90', $encodedPath);
+            
+            $md_content .= "- [{$displayName}]({$encodedPath})\n";
+        }
+    } elseif ($reportType === "pages_alpha") {
         $md_content = "# Pages\n\n";
         
         // Get unique files and sort alphabetically
