@@ -1,12 +1,13 @@
 <?php
 
-// Directory to scan (adjust this path as needed)
-$rootDirectory = '/Users/Reess/Desktop/ReessDB/repos/Wordpress';  // Example path, modify as needed
+// Configuration parameters
+$rootDirectory = '/Users/Reess/Desktop/ReessDB/repos/Wordpress/';  // Example path, modify as needed
 $orderBy = "domain"; // Can be "default", "creation_newest", "modified_newest", or "domain"
+$reportType = "links_external"; // Can be "links_external" or "links_internal"
 
-$linkType = "external"; // Can be "internal" or "external"
-$output_csv = __DIR__ . '/extracted_links.csv';
-$output_md = __DIR__ . '/extracted_links.md';
+// Output file paths (comment out to skip generation)
+$output_csv = __DIR__ . "/exports/{$reportType}.csv";
+$output_md = __DIR__ . "/exports/{$reportType}.md";
 
 // Create directory if it doesn't exist
 if (!file_exists($rootDirectory)) {
@@ -36,7 +37,7 @@ function findMarkdownFiles($dir) {
 }
 
 // Function to extract links from markdown content
-function extractLinks($content, $linkType) {
+function extractLinks($content, $reportType) {
     $links = [];
     
     // Match markdown links [text](url)
@@ -48,8 +49,8 @@ function extractLinks($content, $linkType) {
         // Check if the link matches the requested type
         $isExternal = preg_match('/^https?:\/\//', $url);
         
-        if (($linkType === "external" && $isExternal) || 
-            ($linkType === "internal" && !$isExternal)) {
+        if (($reportType === "links_external" && $isExternal) || 
+            ($reportType === "links_internal" && !$isExternal)) {
             $links[] = [
                 'url' => $url,
                 'name' => ($name !== $url) ? $name : ''
@@ -58,7 +59,7 @@ function extractLinks($content, $linkType) {
     }
     
     // Match plain URLs (only for external links)
-    if ($linkType === "external") {
+    if ($reportType === "links_external") {
         preg_match_all('/(?<![\(\[])(https?:\/\/[^\s\)]+)/', $content, $plainUrls);
         foreach ($plainUrls[1] as $url) {
             $links[] = [
@@ -103,30 +104,51 @@ function getRelativePath($fullPath, $rootDirectory) {
     return $relativePath;
 }
 
+// Function to count words in markdown content
+function countWords($content) {
+    // Remove markdown links [text](url) and replace with just the text
+    $content = preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $content);
+    
+    // Remove URLs
+    $content = preg_replace('/https?:\/\/\S+/', '', $content);
+    
+    // Remove markdown headers (#)
+    $content = preg_replace('/^#+\s.*$/m', '', $content);
+    
+    // Remove special characters and extra whitespace
+    $content = preg_replace('/[^\w\s]/', ' ', $content);
+    $content = preg_replace('/\s+/', ' ', $content);
+    
+    // Count words
+    return str_word_count(trim($content));
+}
+
 // Main process
 $markdownFiles = findMarkdownFiles($rootDirectory);
 $allLinks = []; // Array to store all links before writing
 
 foreach ($markdownFiles as $file) {
     $content = file_get_contents($file);
-    $links = extractLinks($content, $linkType);
+    $links = extractLinks($content, $reportType);
     
     // Get file creation and modification times
     $creationTime = getMacCreationTime($file);
     $modifiedTime = date('Y-m-d H:i:s', filemtime($file));
     $filename = basename($file);
     $relativePath = getRelativePath($file, $rootDirectory);
+    $wordCount = countWords($content);
     
     // Store all link information
     foreach ($links as $link) {
         $allLinks[] = [
-            'domain' => $linkType === "external" ? extractDomain($link['url']) : "",
+            'domain' => $reportType === "links_external" ? extractDomain($link['url']) : "",
             'filename' => $filename,
             'url' => $link['url'],
             'name' => $link['name'],
             'fullpath' => $relativePath,
             'creation_time' => $creationTime,
-            'modified_time' => $modifiedTime
+            'modified_time' => $modifiedTime,
+            'word_count' => $wordCount
         ];
     }
 }
@@ -155,8 +177,8 @@ if ($orderBy === "creation_newest") {
 
 // Write CSV if output path is defined
 if (isset($output_csv)) {
-    // Initialize CSV file with headers
-    $csvHeaders = ['Domain', 'File', 'URL', 'Link Name', 'Source File', 'Creation Date', 'Last Modified Date'];
+    // Initialize CSV file with headers (all lowercase with underscores)
+    $csvHeaders = ['domain', 'file', 'url', 'link_name', 'source_file', 'creation_date', 'modified_date', 'word_count'];
     $fp = fopen($output_csv, 'w');
     fputcsv($fp, $csvHeaders);
 
@@ -169,7 +191,8 @@ if (isset($output_csv)) {
             $link['name'],
             $link['fullpath'],
             $link['creation_time'],
-            $link['modified_time']
+            $link['modified_time'],
+            $link['word_count']
         ]);
     }
     fclose($fp);
@@ -178,7 +201,8 @@ if (isset($output_csv)) {
 
 // Write Markdown if output path is defined
 if (isset($output_md)) {
-    $md_content = "# Extracted Links\n\n";
+    $title = $reportType === "links_external" ? "External Links" : "Internal Links";
+    $md_content = "# {$title}\n\n";
     
     // Count unique domains and total URLs
     $totalUrls = count($allLinks);

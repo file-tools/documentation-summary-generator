@@ -1,5 +1,9 @@
 ## REAMDE
 
+## More ideas
+- Backlinks - Could calculate this ... find ones without any
+- Word count - added a Wordcount feature but this is best with just a report on PAGES instead of LINKS
+
 
 ## Process ..
 
