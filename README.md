@@ -1,5 +1,9 @@
 ## REAMDE
 
+## Ideas
+- Instead of "DirectoryToCSV" call this "MDReports" or "DirReports" or "MDStats"or "FlatStats"
+- Realizations - Notion is nice because you habe tables and text ... markdown docs are limited to mostly text but this atleast gives powerful survery-of-your text capabilities 
+
 ## More ideas
 - AUTHOR REPORTS -- by RK, by Tim, by Jane ... if Authors name stored in frontmatter could do this
 - Word count - added a Wordcount feature but this is best with just a report on PAGES instead of LINKS
