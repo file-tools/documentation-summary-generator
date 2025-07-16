@@ -1,4 +1,14 @@
-## REAMDE
+## Documentation Summary Generator
+
+## What
+Generates useful CSV or markdown summaries of large, complicated documentation repositories: 
+- All internal and external links
+- All pages in one file sorted by folder or alphabetically
+
+| Dir | to | Dir Sum |
+|-----------|-----------|-----------|
+| ![Directory](https://drive.google.com/thumbnail?id=1Q8sp315z3QHwq95FGAMiTIbrxanWc21G&sz=s100) | ![Convert](https://drive.google.com/thumbnail?id=1rCdqG_aHwvMUZDZU1RKK9WNH_ck0oR3P&sz=s100) | ![Summary](https://drive.google.com/thumbnail?id=180kLHm_hsT5JSQVtGma4Gd9_Hio8-3lV&sz=s100) |
+
 
 ## Ideas
 - Instead of "DirectoryToCSV" call this "MDReports" or "DirReports" or "MDStats"or "FlatStats"

@@ -1,3 +1,5 @@
-extracted_links.csv
-links_external.csv
-/exports
+# Configuration file with actual paths
+config.ini
+
+# Export directories
+exports/

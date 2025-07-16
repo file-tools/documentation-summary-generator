@@ -1,13 +1,29 @@
 <?php
 
-// Configuration parameters
-$rootDirectory = '/Users/Reess/Desktop/ReessDB/repos/Wordpress/';  // Example path, modify as needed
-$orderBy = "default"; // Can be "default", "creation_newest", "modified_newest", or "domain"
-$reportType = "pages_byfolder"; // Can be "links_external", "links_internal", "pages_alpha", or "pages_byfolder"
+// Load configuration from config.ini file
+$configFile = __DIR__ . '/config.ini';
+if (!file_exists($configFile)) {
+    die("Configuration file 'config.ini' not found. Please create it with the required settings.\n");
+}
 
-// Output file paths (comment out to skip generation)
-$output_csv = __DIR__ . "/exports/{$reportType}/{$reportType}.csv";
-$output_md = __DIR__ . "/exports/{$reportType}/{$reportType}.md";
+$config = parse_ini_file($configFile, true);
+if ($config === false) {
+    die("Error reading configuration file 'config.ini'. Please check the file format.\n");
+}
+
+// Configuration parameters
+$rootDirectory = $config['root_directory'];  // Example path, modify as needed
+$orderBy = $config['order_by']; // Can be "default", "creation_newest", "modified_newest", or "domain"
+$reportType = $config['report_type']; // Can be "links_external", "links_internal", "pages_alpha", or "pages_byfolder"
+
+// Export path configuration
+$exportPath = $config['export_path'] ?? 'exports';
+
+// Output file paths - always generated based on report_type
+// Use absolute path if exportPath starts with /, otherwise relative to script directory
+$basePath = (substr($exportPath, 0, 1) === '/') ? $exportPath : __DIR__ . "/{$exportPath}";
+$output_csv = "{$basePath}/{$reportType}/{$reportType}.csv";
+$output_md = "{$basePath}/{$reportType}/{$reportType}.md";
 
 // Create directories if they don't exist
 if (!file_exists($rootDirectory)) {
@@ -18,12 +34,10 @@ if (!file_exists($rootDirectory)) {
 }
 
 // Create export directories if they don't exist
-if (isset($output_csv) || isset($output_md)) {
-    $exportDir = __DIR__ . "/exports/{$reportType}";
-    if (!file_exists($exportDir)) {
-        mkdir($exportDir, 0755, true);
-        echo "Created export directory: $exportDir\n";
-    }
+$exportDir = "{$basePath}/{$reportType}";
+if (!file_exists($exportDir)) {
+    mkdir($exportDir, 0755, true);
+    echo "Created export directory: $exportDir\n";
 }
 
 // Function to recursively get all markdown files
@@ -198,13 +212,12 @@ if ($orderBy === "creation_newest") {
     });
 }
 
-// Write CSV if output path is defined
-if (isset($output_csv)) {
+// Write CSV file
     if ($reportType === "pages_byfolder" || $reportType === "pages_alpha") {
         // Initialize CSV file with headers for pages report
         $csvHeaders = ['file', 'folder1', 'folder2', 'folder3', 'folder4', 'source_file', 'creation_date', 'modified_date', 'word_count'];
         $fp = fopen($output_csv, 'w');
-        fputcsv($fp, $csvHeaders);
+        fputcsv($fp, $csvHeaders, ',', '"', '\\');
 
         // Sort files
         if ($reportType === "pages_byfolder") {
@@ -258,15 +271,19 @@ if (isset($output_csv)) {
                     $link['creation_time'],
                     $link['modified_time'],
                     $link['word_count']
-                ]);
+                ], ',', '"', '\\');
                 $processedFiles[] = $link['filename'];
             }
         }
-    } else {
-        // Existing link report CSV code
+        fclose($fp);
+        echo "CSV extraction completed. Results saved to: $output_csv\n";
+    }
+    
+    if ($reportType === "links_external" || $reportType === "links_internal") {
+        // Link report CSV code
         $csvHeaders = ['domain', 'file', 'url', 'link_name', 'source_file', 'creation_date', 'modified_date', 'word_count'];
         $fp = fopen($output_csv, 'w');
-        fputcsv($fp, $csvHeaders);
+        fputcsv($fp, $csvHeaders, ',', '"', '\\');
 
         foreach ($allLinks as $link) {
             fputcsv($fp, [
@@ -278,15 +295,13 @@ if (isset($output_csv)) {
                 $link['creation_time'],
                 $link['modified_time'],
                 $link['word_count']
-            ]);
+            ], ',', '"', '\\');
         }
+        fclose($fp);
+        echo "CSV extraction completed. Results saved to: $output_csv\n";
     }
-    fclose($fp);
-    echo "CSV extraction completed. Results saved to: $output_csv\n";
-}
 
-// Write Markdown if output path is defined
-if (isset($output_md)) {
+// Write Markdown file
     if ($reportType === "pages_byfolder") {
         $md_content = "# Pages By Folder\n\n";
         
@@ -421,4 +436,3 @@ if (isset($output_md)) {
     
     file_put_contents($output_md, $md_content);
     echo "Markdown extraction completed. Results saved to: $output_md\n";
-}
