@@ -10,7 +10,9 @@ Generates useful CSV or markdown summaries of large, complicated documentation r
 | ![Directory](https://drive.google.com/thumbnail?id=1Q8sp315z3QHwq95FGAMiTIbrxanWc21G&sz=s100) | ![Convert](https://drive.google.com/thumbnail?id=1rCdqG_aHwvMUZDZU1RKK9WNH_ck0oR3P&sz=s100) | ![Summary](https://drive.google.com/thumbnail?id=180kLHm_hsT5JSQVtGma4Gd9_Hio8-3lV&sz=s100) |
 
 ## Why 🤷‍♂️
-Notion is nice because you habe tables and text ... markdown docs are limited to mostly text but this atleast gives powerful survery-of-your text capabilities 
+- Database-drive content managements like Notion are nice because you can also view database summaries of your writing
+- Documentation written in plain text and markdown doesn't easily allow for this
+- This simple one-file script aims give you some of the content summary powers of tools like Notion within your flat-file system and for you documentation! 
 
 ## Process 📋
 
