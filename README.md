@@ -1,6 +1,6 @@
 ## Documentation Summary Generator
 
-## What
+## What ⚡
 Generates useful CSV or markdown summaries of large, complicated documentation repositories: 
 - All internal and external links
 - All pages in one file sorted by folder or alphabetically
@@ -9,20 +9,10 @@ Generates useful CSV or markdown summaries of large, complicated documentation r
 |-----------|-----------|-----------|
 | ![Directory](https://drive.google.com/thumbnail?id=1Q8sp315z3QHwq95FGAMiTIbrxanWc21G&sz=s100) | ![Convert](https://drive.google.com/thumbnail?id=1rCdqG_aHwvMUZDZU1RKK9WNH_ck0oR3P&sz=s100) | ![Summary](https://drive.google.com/thumbnail?id=180kLHm_hsT5JSQVtGma4Gd9_Hio8-3lV&sz=s100) |
 
+## Why 🤷‍♂️
+Notion is nice because you habe tables and text ... markdown docs are limited to mostly text but this atleast gives powerful survery-of-your text capabilities 
 
-## Ideas
-- Instead of "DirectoryToCSV" call this "MDReports" or "DirReports" or "MDStats"or "FlatStats"
-- Realizations - Notion is nice because you habe tables and text ... markdown docs are limited to mostly text but this atleast gives powerful survery-of-your text capabilities 
-
-## More ideas
-- AUTHOR REPORTS -- by RK, by Tim, by Jane ... if Authors name stored in frontmatter could do this
-- Word count - added a Wordcount feature but this is best with just a report on PAGES instead of LINKS
-- Backlinks - Could calculate this ... find ones without any
-- TAG REPORTS and sorted - Also from frontamtterYou'r
-- JSON Export as well ... 
-
-## Process ..
-
+## Process 📋
 
 ### Script Overview
 
@@ -76,3 +66,11 @@ This script will:
 - Groups links by domain when using domain sorting
 - Filters internal/external links based on `$linkType`
 - Outputs to `extracted_links.csv` in the same directory as the script
+
+## Ideas 💡
+- Instead of "DirectoryToCSV" call this "MDReports" or "DirReports" or "MDStats"or "FlatStats"
+- AUTHOR REPORTS -- by RK, by Tim, by Jane ... if Authors name stored in frontmatter could do this
+- Word count - added a Wordcount feature but this is best with just a report on PAGES instead of LINKS
+- Backlinks - Could calculate this ... find ones without any
+- TAG REPORTS and sorted - Also from frontamtterYou
+- JSON Export as well ... 
