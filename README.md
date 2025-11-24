@@ -16,6 +16,8 @@ Generates useful CSV or markdown summaries of large, complicated documentation r
 
 ## Process 📋
 
+[![Watch the video](https://drive.google.com/thumbnail?id=1Bdb5pYwVmrz-r6TL6X0nDy-9wQPAfZmj&sz=s225)](https://youtu.be/SRoziu4GVn0)
+
 ### Script Overview
 
 This script will:
