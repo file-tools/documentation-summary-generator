@@ -17,9 +17,11 @@ Generates useful CSV or markdown summaries of large, complicated documentation r
 ## Process 📋
 
 Overview video:
+
 [![Watch the video](https://drive.google.com/thumbnail?id=1Bdb5pYwVmrz-r6TL6X0nDy-9wQPAfZmj&sz=s225)](https://youtu.be/Ygfg6Dzn5ao)
 
 2nd video on how this can work with Obsidian: 
+
 [![Watch the video](https://drive.google.com/thumbnail?id=114LTAOPvkNCKOx3DaYsDeWdkS0a5EHmV&sz=s225)](https://youtu.be/bEFrNui-IE0)
 
 ### Script Overview
